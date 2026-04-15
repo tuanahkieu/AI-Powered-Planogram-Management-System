@@ -56,7 +56,7 @@ cd Backend
 venv/bin/python3.12 app.py
 ```
 
-> ⚠️ **Quan trọng:** Luôn dùng `venv/bin/python3.12`, không dùng `python3` hay `python` vì Mac có Python 3.9 mặc định không có các thư viện cần thiết.
+
 
 Server khởi động tại: **http://127.0.0.1:5002**
 

@@ -1,0 +1,27 @@
+{
+    "shelves": [
+        [
+            "pepsi", "mirinda-me", "mirinda-me", "mirinda-me",
+            "mirinda-me", "mirinda-xaxi", 
+            "mirinda-cam", "mirinda-xaxi"
+        ],
+        [
+            "string-yellow-chai", "string-yellow-chai", "string-yellow-chai",
+            "string-red-chai", 
+            "twister-dau", 
+            "revive-chanhmuoi-chai", "revive-chanhmuoi-chai", 
+            "7up-chai"
+        ],
+        [
+            "revive-white-chai", "revive-white-chai", 
+            "string-yellow-chai", "string-yellow-chai",
+            "olong-tea",
+            "mirinda-xaxi-chai","mirinda-xaxi-chai",
+            "pepsi-blue-chai"
+        ],
+        [
+            "string-yellow-chai",
+            "aquafina", "aquafina", "aquafina", "aquafina", "aquafina", "aquafina"
+        ]
+    ]
+}

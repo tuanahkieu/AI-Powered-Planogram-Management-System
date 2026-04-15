@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kiểm Tra Planogram | POG Manager</title>
+    <meta name="description" content="Tải ảnh kệ hàng thực tế để AI so sánh với sơ đồ trưng bày chuẩn">
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <!-- ======= SIDEBAR ======= -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="3" width="20" height="4" rx="1"/>
+                    <rect x="2" y="10" width="20" height="4" rx="1"/>
+                    <rect x="2" y="17" width="20" height="4" rx="1"/>
+                </svg>
+            </div>
+            <span class="brand-name">POG Manager</span>
+        </div>
+
+        <nav class="sidebar-nav">
+            <div class="nav-section-label">QUẢN LÝ</div>
+
+            <a class="nav-item" href="index.html">
+                <div class="nav-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 11l3 3L22 4"/>
+                        <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+                    </svg>
+                </div>
+                <span>Kiểm Tra</span>
+                <div class="nav-badge">AI</div>
+            </a>
+
+            <a class="nav-item" href="planogram.html">
+                <div class="nav-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7" rx="1"/>
+                        <rect x="14" y="3" width="7" height="7" rx="1"/>
+                        <rect x="3" y="14" width="7" height="7" rx="1"/>
+                        <rect x="14" y="14" width="7" height="7" rx="1"/>
+                    </svg>
+                </div>
+                <span>Tạo Planogram</span>
+            </a>
+
+            <a class="nav-item" href="hopdong.html">
+                <div class="nav-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="9" y1="13" x2="15" y2="13"/>
+                        <line x1="9" y1="17" x2="15" y2="17"/>
+                    </svg>
+                </div>
+                <span>Hợp Đồng Nhãn Hàng</span>
+            </a>
+
+            <a class="nav-item" href="ke.html">
+                <div class="nav-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="3" y1="6" x2="21" y2="6"/>
+                        <line x1="3" y1="12" x2="21" y2="12"/>
+                        <line x1="3" y1="18" x2="21" y2="18"/>
+                        <line x1="5" y1="6" x2="5" y2="18"/>
+                        <line x1="19" y1="6" x2="19" y2="18"/>
+                    </svg>
+                </div>
+                <span>Quản Lý Kệ Hàng</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar">AI</div>
+                <div class="user-details">
+                    <span class="user-name">Admin Store</span>
+                    <span class="user-role">Quản lý cửa hàng</span>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ======= MAIN CONTENT ======= -->
+    <main class="main-content" id="main-content">
+
+        <div class="page active" id="page-ktra">
+            <div class="page-header">
+                <div>
+                    <h1>Kiểm Tra Planogram</h1>
+                    <p class="page-subtitle">Tải ảnh kệ hàng thực tế để AI so sánh với sơ đồ chuẩn</p>
+                </div>
+                <div class="header-actions">
+                    <span class="status-badge success">
+                        <span class="pulse-dot"></span>
+                        Hệ thống hoạt động
+                    </span>
+                </div>
+            </div>
+
+            <div class="content-grid">
+                <!-- Upload Panel -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon indigo">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="16 16 12 12 8 16"/>
+                                <line x1="12" y1="12" x2="12" y2="21"/>
+                                <path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3"/>
+                            </svg>
+                        </div>
+                        <h3 class="card-title">1. Tải ảnh lên</h3>
+                    </div>
+
+                    <div class="upload-area" id="upload-area">
+                        <input type="file" id="file-input" accept="image/*">
+                        <div class="upload-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <rect x="3" y="3" width="18" height="18" rx="3"/>
+                                <circle cx="8.5" cy="8.5" r="1.5"/>
+                                <polyline points="21 15 16 10 5 21"/>
+                            </svg>
+                        </div>
+                        <h4>Kéo thả hoặc click để chọn ảnh</h4>
+                        <p>Hỗ trợ JPG, PNG · Tối đa 10MB</p>
+                    </div>
+
+                    <div class="preview-container hidden" id="source-preview-container">
+                        <img id="source-preview" src="" alt="Ảnh kệ hàng">
+                        <div class="preview-overlay">
+                            <span>Click để đổi ảnh</span>
+                        </div>
+                    </div>
+
+                    <!-- Chọn kệ chuẩn -->
+                    <div class="pog-select-row" id="planogramSelectRow">
+                        <label class="pog-select-label">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;flex-shrink:0;">
+                                <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+                                <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+                            </svg>
+                            Planogram chuẩn:
+                        </label>
+                        <select id="planogramFileSelect" class="pog-file-select">
+                            <option value="">-- Chọn kệ --</option>
+                        </select>
+                        <button class="pog-refresh-btn" id="pogRefreshFiles" title="Làm mới danh sách">↻</button>
+                    </div>
+
+                    <button class="btn btn-primary" id="analyze-btn" disabled>
+                        <div class="spinner"></div>
+                        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"/>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                        </svg>
+                        <span class="btn-text">Kiểm Tra Ngay</span>
+                    </button>
+                </div>
+
+                <!-- Result Panel -->
+                <div class="card result-card" id="result-card">
+                    <div class="card-header">
+                        <div class="card-icon purple">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                            </svg>
+                        </div>
+                        <h3 class="card-title">2. Kết Quả Phân Tích</h3>
+                    </div>
+
+                    <div id="result-placeholder" class="empty-state">
+                        <div class="empty-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <circle cx="12" cy="12" r="10"/>
+                                <line x1="12" y1="8" x2="12" y2="12"/>
+                                <line x1="12" y1="16" x2="12.01" y2="16"/>
+                            </svg>
+                        </div>
+                        <p>Đang chờ phân tích...</p>
+                        <span>Tải ảnh và nhấn "Kiểm Tra Ngay" để xem kết quả</span>
+                    </div>
+
+                    <div id="compliance-result" class="hidden">
+                        <h2 id="compliance-status" class="compliance-status"></h2>
+
+                        <div id="compliance-issues" class="issues-box hidden">
+                            <h4>⚠️ Vấn đề phát hiện:</h4>
+                            <ul id="issues-list"></ul>
+                        </div>
+
+                        <div class="result-grid">
+                            <div>
+                                <h4 class="result-label purple">Kết quả trực quan:</h4>
+                                <img id="compliance-image" src="" class="result-img hidden" alt="Ảnh phân tích">
+                            </div>
+                            <div>
+                                <h4 class="result-label green">Planogram chuẩn:</h4>
+                                <pre id="expected-layout"></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="error-message" class="error-msg hidden"></div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script src="js/shared.js"></script>
+    <script src="js/ktra.js"></script>
+</body>
+</html>

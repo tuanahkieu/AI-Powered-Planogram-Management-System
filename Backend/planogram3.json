@@ -1,0 +1,18 @@
+{
+    "shelves": [
+        [
+            "pepsi-blue", "pepsi-blue", "pepsi-blue", "pepsi-blue",
+            "twister-cam-lon", "twister-cam-lon", "twister-cam-lon", "twister-cam-lon"
+        ],
+        [
+            "revive-white", "revive-white", "revive-white",
+            "mirinda-cam", "mirinda-cam", "mirinda-cam",
+            "string-red", "string-red"
+        ],
+        [
+            "mirinda-cam", "mirinda-cam", "aquafina",
+            "mirinda-cam-chai", "mirinda-cam-chai", "mirinda-cam-chai", "mirinda-cam-chai",
+            "string-yellow-chai", "string-yellow-chai", "string-yellow-chai", "string-yellow-chai"
+        ]
+    ]
+}

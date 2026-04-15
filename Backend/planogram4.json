@@ -1,0 +1,16 @@
+{
+    "shelves": [
+        [
+            "pepsi-blue", "pepsi-blue", "pepsi-blue",
+            "7up", "7up", "7up", "7up", "7up"
+        ],
+        [
+            "pepsi-blue", "pepsi-blue", "pepsi-blue",
+            "twister-cam-lon", "twister-cam-lon", "twister-cam-lon", "twister-cam-lon", "twister-cam-lon"
+        ],
+        [
+            "twister-cam-lon", "twister-cam-lon", "twister-cam-lon", "twister-cam-lon", "twister-cam-lon",
+            "olong-tea", "olong-tea", "olong-tea"
+        ]
+    ]
+}

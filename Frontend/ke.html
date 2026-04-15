@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản Lý Kệ Hàng | POG Manager</title>
+    <meta name="description" content="Danh sách và trạng thái các kệ hàng đang hoạt động">
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <!-- ======= SIDEBAR ======= -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="3" width="20" height="4" rx="1"/>
+                    <rect x="2" y="10" width="20" height="4" rx="1"/>
+                    <rect x="2" y="17" width="20" height="4" rx="1"/>
+                </svg>
+            </div>
+            <span class="brand-name">POG Manager</span>
+        </div>
+
+        <nav class="sidebar-nav">
+            <div class="nav-section-label">QUẢN LÝ</div>
+
+            <a class="nav-item" href="index.html">
+                <div class="nav-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 11l3 3L22 4"/>
+                        <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+                    </svg>
+                </div>
+                <span>Kiểm Tra</span>
+                <div class="nav-badge">AI</div>
+            </a>
+
+            <a class="nav-item" href="planogram.html">
+                <div class="nav-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7" rx="1"/>
+                        <rect x="14" y="3" width="7" height="7" rx="1"/>
+                        <rect x="3" y="14" width="7" height="7" rx="1"/>
+                        <rect x="14" y="14" width="7" height="7" rx="1"/>
+                    </svg>
+                </div>
+                <span>Tạo Planogram</span>
+            </a>
+
+            <a class="nav-item" href="hopdong.html">
+                <div class="nav-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="9" y1="13" x2="15" y2="13"/>
+                        <line x1="9" y1="17" x2="15" y2="17"/>
+                    </svg>
+                </div>
+                <span>Hợp Đồng Nhãn Hàng</span>
+            </a>
+
+            <a class="nav-item" href="ke.html">
+                <div class="nav-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="3" y1="6" x2="21" y2="6"/>
+                        <line x1="3" y1="12" x2="21" y2="12"/>
+                        <line x1="3" y1="18" x2="21" y2="18"/>
+                        <line x1="5" y1="6" x2="5" y2="18"/>
+                        <line x1="19" y1="6" x2="19" y2="18"/>
+                    </svg>
+                </div>
+                <span>Quản Lý Kệ Hàng</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar">AI</div>
+                <div class="user-details">
+                    <span class="user-name">Admin Store</span>
+                    <span class="user-role">Quản lý cửa hàng</span>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ======= MAIN CONTENT ======= -->
+    <main class="main-content" id="main-content">
+
+        <div class="page active" id="page-ke">
+            <div class="page-header">
+                <div>
+                    <h1>Quản Lý Kệ Hàng</h1>
+                    <p class="page-subtitle">Danh sách và trạng thái các kệ hàng đang hoạt động</p>
+                </div>
+                <button class="btn btn-primary" style="width:auto;padding:0.6rem 1.5rem;" onclick="alert('Tính năng đang phát triển')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+                        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    Thêm kệ
+                </button>
+            </div>
+
+            <div class="shelves-list">
+                <div class="shelf-item">
+                    <div class="shelf-num">01</div>
+                    <div class="shelf-details">
+                        <h4>Kệ A1 — Nước giải khát</h4>
+                        <p>Dãy A · Vị trí cửa vào · 4 tầng</p>
+                    </div>
+                    <div class="shelf-products">
+                        <span class="product-tag">Coca-Cola</span>
+                        <span class="product-tag">Pepsi</span>
+                        <span class="product-tag">7UP</span>
+                    </div>
+                    <span class="shelf-status ok">Đạt chuẩn</span>
+                </div>
+                <div class="shelf-item">
+                    <div class="shelf-num">02</div>
+                    <div class="shelf-details">
+                        <h4>Kệ A2 — Sữa &amp; Dairy</h4>
+                        <p>Dãy A · Giữa cửa hàng · 3 tầng</p>
+                    </div>
+                    <div class="shelf-products">
+                        <span class="product-tag">Vinamilk</span>
+                        <span class="product-tag">TH True Milk</span>
+                    </div>
+                    <span class="shelf-status warn">Cần kiểm tra</span>
+                </div>
+                <div class="shelf-item">
+                    <div class="shelf-num">03</div>
+                    <div class="shelf-details">
+                        <h4>Kệ B1 — Snack &amp; Bánh kẹo</h4>
+                        <p>Dãy B · Cuối cửa hàng · 5 tầng</p>
+                    </div>
+                    <div class="shelf-products">
+                        <span class="product-tag">Oishi</span>
+                        <span class="product-tag">Pringles</span>
+                        <span class="product-tag">Lays</span>
+                    </div>
+                    <span class="shelf-status ok">Đạt chuẩn</span>
+                </div>
+                <div class="shelf-item">
+                    <div class="shelf-num">04</div>
+                    <div class="shelf-details">
+                        <h4>Kệ B2 — Mì &amp; Thực phẩm nhanh</h4>
+                        <p>Dãy B · Cuối cửa hàng · 4 tầng</p>
+                    </div>
+                    <div class="shelf-products">
+                        <span class="product-tag">Masan</span>
+                        <span class="product-tag">Acecook</span>
+                    </div>
+                    <span class="shelf-status fail">Lỗi trưng bày</span>
+                </div>
+            </div>
+
+            <div class="coming-soon-card" style="margin-top:1.5rem; padding: 1.5rem;">
+                <p style="color: var(--text-muted); font-size: 0.9rem;">🗂️ Tính năng chỉnh sửa và quản lý toàn diện đang được phát triển</p>
+            </div>
+        </div>
+
+    </main>
+
+    <script src="js/shared.js"></script>
+</body>
+</html>
