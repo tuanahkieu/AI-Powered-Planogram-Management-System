@@ -1,9 +1,16 @@
 """
 database.py — MongoDB connection & helper functions
 Dùng để quản lý kết nối và các thao tác CRUD với MongoDB.
+
+Collections:
+  - planograms    : Dữ liệu planogram (kệ hàng)
+  - products      : Danh mục sản phẩm
+  - contracts     : Hợp đồng nhãn hàng
+  - compliance_logs: Lịch sử kiểm tra
 """
 
 import os
+import certifi
 from datetime import datetime
 from dotenv import load_dotenv
 from pymongo import MongoClient, DESCENDING
@@ -23,7 +30,7 @@ def get_db():
         mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017/planogram_db")
         db_name   = os.getenv("MONGO_DB_NAME", "planogram_db")
         try:
-            _client = MongoClient(mongo_uri, serverSelectionTimeoutMS=5000)
+            _client = MongoClient(mongo_uri, serverSelectionTimeoutMS=5000, tlsCAFile=certifi.where())
             _client.admin.command("ping")
             _db = _client[db_name]
             print(f"✅ Kết nối MongoDB thành công: {db_name}")
@@ -171,3 +178,66 @@ def get_compliance_logs(planogram_name: str = None, limit: int = 20) -> list:
         {**d, "_id": str(d["_id"]), "checked_at": str(d["checked_at"])}
         for d in docs
     ]
+
+
+# ─── Contracts Collection ─────────────────────────────────────────────────────
+
+def save_contract(contract: dict) -> dict:
+    """
+    Lưu một hợp đồng mới hoặc cập nhật hợp đồng cũ.
+
+    contract fields:
+        brand_name  : str  — tên nhãn hàng
+        brand_code  : str  — mã nhãn hàng (slug)
+        brand_color : str  — màu hex cho avatar
+        shelf_name  : str  — tên kệ (display_name)
+        shelf_id    : str  — slug kệ (e.g. planogram_ke_1)
+        rows        : list[int] — các chỉ số hàng được chọn (0-indexed)
+        start_date  : str  — ngày bắt đầu (ISO)
+        end_date    : str  — ngày kết thúc (ISO)
+        status      : str  — 'active' | 'expired' | 'pending'
+    """
+    db = get_db()
+    if db is None:
+        raise RuntimeError("Không có kết nối MongoDB")
+
+    col = db["contracts"]
+    now = datetime.utcnow()
+    doc = {**contract, "updated_at": now}
+
+    if "_id" in doc:
+        from bson import ObjectId
+        contract_id = doc.pop("_id")
+        result = col.update_one({"_id": ObjectId(contract_id)}, {"$set": doc})
+        return {"id": str(contract_id)}
+    else:
+        doc["created_at"] = now
+        result = col.insert_one(doc)
+        return {"id": str(result.inserted_id)}
+
+
+def list_contracts() -> list:
+    """Lấy tất cả hợp đồng, sắp xếp theo ngày tạo mới nhất."""
+    db = get_db()
+    if db is None:
+        raise RuntimeError("Không có kết nối MongoDB")
+
+    docs = db["contracts"].find({}).sort("created_at", DESCENDING)
+    result = []
+    for d in docs:
+        d["_id"] = str(d["_id"])
+        d["created_at"] = str(d.get("created_at", ""))
+        d["updated_at"] = str(d.get("updated_at", ""))
+        result.append(d)
+    return result
+
+
+def delete_contract(contract_id: str) -> bool:
+    """Xóa hợp đồng theo _id."""
+    db = get_db()
+    if db is None:
+        raise RuntimeError("Không có kết nối MongoDB")
+
+    from bson import ObjectId
+    result = db["contracts"].delete_one({"_id": ObjectId(contract_id)})
+    return result.deleted_count > 0

@@ -34,6 +34,9 @@ try:
         get_compliance_logs,
         save_products as mongo_save_products,
         get_products  as mongo_get_products,
+        save_contract as mongo_save_contract,
+        list_contracts as mongo_list_contracts,
+        delete_contract as mongo_delete_contract,
         get_db
     )
     MONGO_AVAILABLE = get_db() is not None
@@ -322,14 +325,20 @@ def list_planograms():
     try:
         if MONGO_AVAILABLE:
             items = mongo_list_planograms()
-            # Trả về cả tên file .json để frontend tương thích
             files = [f"{d['name']}.json" for d in items]
             return jsonify({'success': True, 'files': files, 'source': 'mongodb', 'data': items})
         else:
             files = [f for f in os.listdir(BASE_DIR)
                      if f.endswith('.json') and f.startswith('planogram')]
             files.sort()
-            return jsonify({'success': True, 'files': files, 'source': 'json_file'})
+            data = [
+                {
+                    'name': f.replace('.json', ''),
+                    'display_name': f.replace('.json', '').replace('planogram_', '').replace('_', ' ').title()
+                }
+                for f in files
+            ]
+            return jsonify({'success': True, 'files': files, 'source': 'json_file', 'data': data})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -356,6 +365,59 @@ def save_planogram():
         shelves      = data.get('shelves', [])
         name         = filename.replace('.json', '')
         display_name = display_name or name
+
+        # ── Kiểm tra hợp đồng active trước khi lưu ───────────────────────
+        if MONGO_AVAILABLE:
+            try:
+                all_contracts = mongo_list_contracts()
+                from datetime import datetime as dt
+                today = dt.utcnow().date()
+                active = [
+                    c for c in all_contracts
+                    if c.get('shelf_id') == name
+                    and c.get('status') == 'active'
+                    and c.get('end_date', '') >= today.isoformat()
+                ]
+                locked_rows = []
+                for c in active:
+                    for row_idx in (c.get('rows') or []):
+                        locked_rows.append({
+                            'row': row_idx,
+                            'brand': c.get('brand_name', ''),
+                            'end_date': c.get('end_date', '')
+                        })
+
+                if locked_rows:
+                    # Lấy dữ liệu hiện tại từ DB để so sánh
+                    current = mongo_get_planogram(name)
+                    current_shelves = current.get('shelves', []) if current else []
+
+                    violations = []
+                    for lock in locked_rows:
+                        row_idx = lock['row']
+                        if row_idx >= len(shelves):
+                            # Tầng bị xóa hoàn toàn
+                            violations.append(
+                                f"Tầng {row_idx + 1} đang có hợp đồng với '{lock['brand']}' (hết hạn {lock['end_date']}) — không thể xóa"
+                            )
+                        elif row_idx < len(current_shelves):
+                            current_row = set(current_shelves[row_idx])
+                            new_row = set(shelves[row_idx])
+                            removed = current_row - new_row
+                            if removed:
+                                violations.append(
+                                    f"Tầng {row_idx + 1} đang có hợp đồng với '{lock['brand']}' — không thể xóa sản phẩm: {', '.join(removed)}"
+                                )
+
+                    if violations:
+                        return jsonify({
+                            'error': 'Không thể lưu: một số tầng đang bị khóa bởi hợp đồng active',
+                            'violations': violations,
+                            'locked_rows': [l['row'] for l in locked_rows]
+                        }), 409
+            except Exception as contract_err:
+                print(f"⚠️ Lỗi kiểm tra hợp đồng: {contract_err}")
+        # ─────────────────────────────────────────────────────────────────
 
         if MONGO_AVAILABLE:
             result = mongo_save_planogram(
@@ -459,6 +521,116 @@ def delete_planogram_route(name):
         if deleted:
             return jsonify({'success': True, 'message': f"Đã xóa '{name}'"})
         return jsonify({'error': 'Không tìm thấy planogram'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# ─── Contracts API ────────────────────────────────────────────────────────────
+
+CONTRACTS_FILE = os.path.join(BASE_DIR, 'contracts.json')
+
+def _load_contracts_json():
+    if os.path.exists(CONTRACTS_FILE):
+        with open(CONTRACTS_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    return []
+
+def _save_contracts_json(contracts):
+    with open(CONTRACTS_FILE, 'w', encoding='utf-8') as f:
+        json.dump(contracts, f, ensure_ascii=False, indent=2)
+
+
+@app.route('/api/contracts', methods=['GET'])
+def get_contracts():
+    """Lấy danh sách tất cả hợp đồng."""
+    try:
+        if MONGO_AVAILABLE:
+            contracts = mongo_list_contracts()
+        else:
+            contracts = _load_contracts_json()
+        return jsonify({'success': True, 'contracts': contracts})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/contracts', methods=['POST'])
+def create_contract():
+    """Tạo hợp đồng mới."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'Không có dữ liệu'}), 400
+
+        required = ['brand_name', 'shelf_id', 'shelf_name', 'rows', 'end_date']
+        for field in required:
+            if field not in data:
+                return jsonify({'error': f'Thiếu trường: {field}'}), 400
+
+        if MONGO_AVAILABLE:
+            result = mongo_save_contract(data)
+            return jsonify({'success': True, 'id': result['id'], 'source': 'mongodb'})
+        else:
+            from datetime import datetime as dt
+            import uuid
+            contracts = _load_contracts_json()
+            data['_id'] = str(uuid.uuid4())
+            data['created_at'] = dt.utcnow().isoformat()
+            contracts.insert(0, data)
+            _save_contracts_json(contracts)
+            return jsonify({'success': True, 'id': data['_id'], 'source': 'json_file'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/contracts/<contract_id>', methods=['DELETE'])
+def delete_contract_route(contract_id):
+    """Xóa một hợp đồng."""
+    try:
+        if MONGO_AVAILABLE:
+            deleted = mongo_delete_contract(contract_id)
+            if deleted:
+                return jsonify({'success': True})
+            return jsonify({'error': 'Không tìm thấy hợp đồng'}), 404
+        else:
+            contracts = _load_contracts_json()
+            new_list = [c for c in contracts if c.get('_id') != contract_id]
+            if len(new_list) == len(contracts):
+                return jsonify({'error': 'Không tìm thấy hợp đồng'}), 404
+            _save_contracts_json(new_list)
+            return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/contracts/shelf/<shelf_id>', methods=['GET'])
+def get_contracts_by_shelf(shelf_id):
+    """Lấy các hợp đồng active của một kệ — dùng để lock UI trong planogram editor."""
+    try:
+        if MONGO_AVAILABLE:
+            all_contracts = mongo_list_contracts()
+        else:
+            all_contracts = _load_contracts_json()
+
+        from datetime import datetime as dt
+        today = dt.utcnow().date().isoformat()
+        active = [
+            c for c in all_contracts
+            if c.get('shelf_id') == shelf_id
+            and c.get('status') == 'active'
+            and c.get('end_date', '') >= today
+        ]
+        # Trả về danh sách tầng bị khóa + thông tin brand
+        locked = []
+        for c in active:
+            for row_idx in (c.get('rows') or []):
+                locked.append({
+                    'row':       row_idx,
+                    'brand':     c.get('brand_name', ''),
+                    'color':     c.get('brand_color', '#6366f1'),
+                    'end_date':  c.get('end_date', ''),
+                    'contract_id': c.get('_id', '')
+                })
+        return jsonify({'success': True, 'locked_rows': locked})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

@@ -64,14 +64,30 @@ async function saveProductsToMongo(products) {
 }
 
 async function loadProductsFromMongo(pogState, renderCatalogFn) {
+    // Palette màu đẹp — dùng chung với planogram.js
+    const PALETTE = [
+        '#ef4444','#f97316','#f59e0b','#eab308','#84cc16',
+        '#22c55e','#10b981','#14b8a6','#06b6d4','#0ea5e9',
+        '#3b82f6','#6366f1','#8b5cf6','#a855f7','#ec4899',
+        '#f43f5e','#0891b2','#059669','#7c3aed','#db2777',
+    ];
+    let _ci = 0;
+    const nextColor = () => { const c = PALETTE[_ci % PALETTE.length]; _ci++; return c; };
+
     try {
         const res  = await fetch(`${API}/api/products`);
         const data = await res.json();
         if (data.success && data.products.length > 0) {
-            pogState.products = data.products;
+            // Gán màu ngẫu nhiên cho sản phẩm chưa có màu hoặc còn màu mặc định cũ
+            const DEFAULT_COLORS = new Set(['#6366f1', '#6b7280', '', null, undefined]);
+            pogState.products = data.products.map(p => ({
+                ...p,
+                color: DEFAULT_COLORS.has(p.color) ? nextColor() : p.color
+            }));
             renderCatalogFn();
         }
     } catch (e) {
         console.warn('Không thể tải products từ MongoDB:', e.message);
     }
 }
+
