@@ -694,6 +694,56 @@ async function loadProductsFromMongo(pogState, renderCatalogFn) {
             showToast(`Đã thêm Kệ ${num}!`, 'success');
         });
 
+        // Import từ AI (lấy labels từ model)
+        const btnImportAI = document.getElementById('pogBtnImportAI');
+        if (btnImportAI) {
+            btnImportAI.addEventListener('click', async () => {
+                btnImportAI.textContent = '⏳ Đang tải...';
+                btnImportAI.disabled = true;
+                try {
+                    const res = await fetch('http://127.0.0.1:5002/api/model-labels');
+                    const data = await res.json();
+                    if (data.success && data.labels) {
+                        let addedCount = 0;
+                        data.labels.forEach((label, idx) => {
+                            // Kiểm tra xem sản phẩm đã có trong danh mục chưa
+                            const exists = pogState.products.some(p => p.name.toLowerCase() === label.toLowerCase());
+                            if (!exists) {
+                                // Chọn màu ngẫu nhiên cho sản phẩm AI
+                                const colors = ['#ef4444', '#0ea5e9', '#f59e0b', '#10b981', '#8b5cf6', '#ec4899', '#14b8a6', '#f43f5e'];
+                                const color = colors[idx % colors.length];
+                                
+                                pogState.products.push({
+                                    id: 'p-ai-' + Date.now() + idx,
+                                    name: label,
+                                    code: `AI-${String(idx + 1).padStart(3, '0')}`,
+                                    category: 'Nhận diện AI',
+                                    color: color
+                                });
+                                addedCount++;
+                            }
+                        });
+                        
+                        if (addedCount > 0) {
+                            renderCatalog();
+                            saveProductsToMongo(pogState.products);
+                            showToast(`Đã import ${addedCount} sản phẩm từ AI!`, 'success');
+                        } else {
+                            showToast('Tất cả sản phẩm AI đã có trong danh mục!', 'success');
+                        }
+                    } else {
+                        showToast('Lỗi: Không thể tải nhãn từ AI', 'error');
+                    }
+                } catch (err) {
+                    showToast('Lỗi kết nối tới Backend', 'error');
+                    console.error(err);
+                } finally {
+                    btnImportAI.textContent = '✨ Import từ AI';
+                    btnImportAI.disabled = false;
+                }
+            });
+        }
+
         // Lưu MongoDB (có tên kệ thực sự + danh mục sản phẩm)
         document.getElementById('pogBtnSave').addEventListener('click', async () => {
             const shelf      = pogState.shelves.find(s => s.id === selectedShelfId);

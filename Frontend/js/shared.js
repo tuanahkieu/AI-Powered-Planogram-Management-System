@@ -16,6 +16,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ─── Shared state ─────────────────────────────────────────────
 let customPlanogram = { shelves: [] };
+let allFetchedPlanograms = [];
+
+// ─── Load Stores ──────────────────────────────────────────────────────────────
+async function loadStores() {
+    try {
+        const res = await fetch(`${API}/api/stores`);
+        const data = await res.json();
+        if (data.success && data.stores) {
+            const sels = [document.getElementById('storeSelect'), document.getElementById('pogStoreSelector')];
+            sels.forEach(sel => {
+                if (!sel) return;
+                const prev = sel.value;
+                sel.innerHTML = '<option value="">-- Chọn cửa hàng --</option>';
+                data.stores.forEach(store => {
+                    const opt = document.createElement('option');
+                    opt.value = store.store_id;
+                    opt.textContent = store.name;
+                    if (store.store_id === prev) opt.selected = true;
+                    sel.appendChild(opt);
+                });
+            });
+        }
+    } catch (e) {
+        console.warn('Không thể tải danh sách cửa hàng:', e.message);
+    }
+}
 
 // ─── Load danh sách planogram (dropdown Kiểm Tra) ─────────────
 async function loadPlanogramFiles() {
@@ -25,30 +51,57 @@ async function loadPlanogramFiles() {
         const res  = await fetch(`${API}/api/planograms`);
         const data = await res.json();
         if (data.success && data.files.length > 0) {
-            const prev = sel.value;
-            sel.innerHTML = '<option value="">-- Chọn kệ --</option>';
+            allFetchedPlanograms = [];
             if (data.source === 'mongodb' && data.data) {
-                data.data.forEach(item => {
-                    const opt = document.createElement('option');
-                    opt.value       = item.name + '.json';
-                    opt.textContent = item.display_name;
-                    if (opt.value === prev) opt.selected = true;
-                    sel.appendChild(opt);
-                });
+                allFetchedPlanograms = data.data.map((item) => ({
+                    value: item.name + '.json',
+                    text: item.display_name,
+                    store_id: item.store_id
+                }));
             } else {
-                data.files.forEach(f => {
-                    const opt = document.createElement('option');
-                    opt.value       = f;
-                    opt.textContent = f.replace('planogram_', '').replace('.json', '').replace(/_/g, ' ');
-                    if (f === prev) opt.selected = true;
-                    sel.appendChild(opt);
-                });
+                allFetchedPlanograms = data.files.map((f) => ({
+                    value: f,
+                    text: f.replace('planogram_', '').replace('.json', '').replace(/_/g, ' '),
+                    store_id: null
+                }));
             }
+            renderPlanogramDropdown();
         }
     } catch (e) {
         console.warn('Không thể tải danh sách planogram:', e.message);
     }
 }
+
+function renderPlanogramDropdown() {
+    const sel = document.getElementById('planogramFileSelect');
+    const storeSel = document.getElementById('storeSelect');
+    if (!sel) return;
+
+    const selectedStore = storeSel ? storeSel.value : '';
+    const prev = sel.value;
+    sel.innerHTML = '<option value="">-- Chọn kệ --</option>';
+
+    const filtered = selectedStore 
+        ? allFetchedPlanograms.filter(p => p.store_id === selectedStore)
+        : allFetchedPlanograms;
+
+    filtered.forEach(item => {
+        const opt = document.createElement('option');
+        opt.value = item.value;
+        opt.textContent = item.text;
+        if (opt.value === prev) opt.selected = true;
+        sel.appendChild(opt);
+    });
+}
+
+// Lắng nghe sự kiện đổi cửa hàng
+document.addEventListener('DOMContentLoaded', () => {
+    loadStores();
+    const storeSel = document.getElementById('storeSelect');
+    if (storeSel) {
+        storeSel.addEventListener('change', renderPlanogramDropdown);
+    }
+});
 
 // ─── Lưu / load danh mục sản phẩm ────────────────────────────
 async function saveProductsToMongo(products) {

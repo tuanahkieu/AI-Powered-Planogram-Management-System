@@ -32,11 +32,14 @@ try:
         delete_planogram as mongo_delete_planogram,
         save_compliance_result,
         get_compliance_logs,
+        delete_compliance_log,
         save_products as mongo_save_products,
         get_products  as mongo_get_products,
         save_contract as mongo_save_contract,
         list_contracts as mongo_list_contracts,
         delete_contract as mongo_delete_contract,
+        list_stores as mongo_list_stores,
+        save_store as mongo_save_store,
         get_db
     )
     MONGO_AVAILABLE = get_db() is not None
@@ -259,6 +262,15 @@ def check_compliance():
         base64_img = base64.b64encode(img_buffer.getvalue()).decode('utf-8')
         data_uri = f"data:image/jpeg;base64,{base64_img}"
             
+        if MONGO_AVAILABLE:
+            store_id = request.form.get('store_id', '')
+            pog_display = request.form.get('planogram_display_name', 'Unknown Shelf')
+            if store_id:
+                try:
+                    save_compliance_result(store_id, pog_display, status, issues, actual_layout, data_uri)
+                except Exception as ex:
+                    print(f"Error saving compliance log: {ex}")
+
         return jsonify({
             "success": True,
             "status": status,
@@ -319,12 +331,28 @@ def detect():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/model-labels', methods=['GET'])
+def get_model_labels():
+    """Lấy danh sách các nhãn (class names) từ model YOLO best.pt."""
+    if model is None:
+        return jsonify({'error': 'AI Model not loaded on server.'}), 500
+    try:
+        # model.names là dictionary dạng {0: 'class1', 1: 'class2'}
+        labels = list(model.names.values())
+        return jsonify({
+            "success": True,
+            "labels": labels
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/planograms', methods=['GET'])
 def list_planograms():
     """List planograms — ưu tiên MongoDB, fallback về file JSON."""
     try:
+        store_id = request.args.get('store_id')
         if MONGO_AVAILABLE:
-            items = mongo_list_planograms()
+            items = mongo_list_planograms(store_id)
             files = [f"{d['name']}.json" for d in items]
             return jsonify({'success': True, 'files': files, 'source': 'mongodb', 'data': items})
         else:
@@ -352,6 +380,7 @@ def save_planogram():
         filename     = data.pop('_filename', None)
         display_name = data.pop('_display_name', None)   # Tên hiển thị từ frontend
         products     = data.pop('_products', None)        # Danh mục sản phẩm snapshot
+        store_id     = data.pop('store_id', None)
 
         if not filename:
             from datetime import datetime
@@ -424,7 +453,8 @@ def save_planogram():
                 name=name,
                 display_name=display_name,
                 shelves=shelves,
-                products=products
+                products=products,
+                store_id=store_id
             )
             # Backup JSON
             plan_path = os.path.join(BASE_DIR, filename)
@@ -443,6 +473,30 @@ def save_planogram():
                 json.dump(data, f, ensure_ascii=False, indent=4)
             return jsonify({'success': True, 'filename': filename, 'source': 'json_file', 'path': plan_path})
 
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/stores', methods=['GET'])
+def list_stores_route():
+    if not MONGO_AVAILABLE:
+        return jsonify({'error': 'MongoDB không khả dụng'}), 503
+    try:
+        stores = mongo_list_stores()
+        return jsonify({'success': True, 'stores': stores})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/stores', methods=['POST'])
+def create_store_route():
+    if not MONGO_AVAILABLE:
+        return jsonify({'error': 'MongoDB không khả dụng'}), 503
+    try:
+        data = request.get_json()
+        name = data.get('name')
+        if not name:
+            return jsonify({'error': 'Thiếu tên cửa hàng'}), 400
+        result = mongo_save_store(name)
+        return jsonify({'success': True, 'store': result})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -503,10 +557,30 @@ def compliance_logs():
     if not MONGO_AVAILABLE:
         return jsonify({'error': 'MongoDB không khả dụng'}), 503
     try:
-        planogram_name = request.args.get('planogram')
-        limit = int(request.args.get('limit', 20))
-        logs = get_compliance_logs(planogram_name, limit)
+        store_id = request.args.get('store_id')
+        limit = int(request.args.get('limit', 50))
+        logs = get_compliance_logs(store_id, limit)
+        # Avoid sending massive images in list view to save bandwidth
+        for log in logs:
+            if 'annotated_image' in log:
+                # We can keep a snippet or remove it if not needed in the initial load, 
+                # but since it's a small app we'll send it for now, or just send a flag
+                pass 
         return jsonify({'success': True, 'logs': logs})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/compliance-logs/<log_id>', methods=['DELETE'])
+def delete_compliance_log_route(log_id):
+    """Xóa một bản ghi compliance log."""
+    if not MONGO_AVAILABLE:
+        return jsonify({'error': 'MongoDB không khả dụng'}), 503
+    try:
+        deleted = delete_compliance_log(log_id)
+        if deleted:
+            return jsonify({'success': True, 'message': 'Đã xóa lịch sử thành công'})
+        return jsonify({'error': 'Không tìm thấy lịch sử hoặc không thể xóa'}), 404
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

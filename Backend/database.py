@@ -40,9 +40,39 @@ def get_db():
     return _db
 
 
+# ─── Stores Collection ────────────────────────────────────────────────────────
+def save_store(name: str) -> dict:
+    """Tạo hoặc cập nhật một cửa hàng mới."""
+    db = get_db()
+    if db is None:
+        raise RuntimeError("Không có kết nối MongoDB")
+    
+    collection = db["stores"]
+    now = datetime.utcnow()
+    # Dùng uuid hoặc generate slug từ name
+    import uuid
+    store_id = f"store_{uuid.uuid4().hex[:8]}"
+    doc = {
+        "store_id": store_id,
+        "name": name,
+        "created_at": now
+    }
+    
+    result = collection.insert_one(doc)
+    return {"id": str(result.inserted_id), "store_id": store_id, "name": name}
+
+def list_stores() -> list:
+    """Lấy danh sách tất cả cửa hàng."""
+    db = get_db()
+    if db is None:
+        return []
+    docs = db["stores"].find({}, {"_id": 0}).sort("created_at", DESCENDING)
+    return list(docs)
+
+
 # ─── Planogram Collection ─────────────────────────────────────────────────────
 
-def save_planogram(name: str, display_name: str, shelves: list, products: list = None) -> dict:
+def save_planogram(name: str, display_name: str, shelves: list, products: list = None, store_id: str = None) -> dict:
     """
     Lưu hoặc cập nhật một planogram vào MongoDB.
 
@@ -51,6 +81,7 @@ def save_planogram(name: str, display_name: str, shelves: list, products: list =
         display_name: Tên hiển thị trên UI (e.g. "Kệ Nước Giải Khát")
         shelves:      list[list[str]] — tên sản phẩm từng tầng
         products:     Danh mục sản phẩm snapshot (optional)
+        store_id:     ID của cửa hàng (optional)
     """
     db = get_db()
     if db is None:
@@ -64,6 +95,8 @@ def save_planogram(name: str, display_name: str, shelves: list, products: list =
         "shelves":      shelves,
         "updated_at":   now,
     }
+    if store_id is not None:
+        doc["store_id"] = store_id
     if products is not None:
         doc["products"] = products
 
@@ -76,27 +109,35 @@ def save_planogram(name: str, display_name: str, shelves: list, products: list =
     return {"id": str(inserted_id), "name": name, "display_name": display_name}
 
 
-def get_planogram(name: str) -> dict | None:
-    """Lấy một planogram theo tên slug."""
+def get_planogram(name: str, store_id: str = None) -> dict | None:
+    """Lấy một planogram theo tên slug (và có thể filter theo store_id)."""
     db = get_db()
     if db is None:
         raise RuntimeError("Không có kết nối MongoDB")
 
-    doc = db["planograms"].find_one({"name": name})
+    query = {"name": name}
+    if store_id:
+        query["store_id"] = store_id
+
+    doc = db["planograms"].find_one(query)
     if doc:
         doc["_id"] = str(doc["_id"])
     return doc
 
 
-def list_planograms() -> list:
-    """Lấy danh sách tất cả planogram (id, name, display_name, updated_at)."""
+def list_planograms(store_id: str = None) -> list:
+    """Lấy danh sách tất cả planogram (id, name, display_name, updated_at, shelves, tier_names, store_id)."""
     db = get_db()
     if db is None:
         raise RuntimeError("Không có kết nối MongoDB")
 
+    query = {}
+    if store_id:
+        query["store_id"] = store_id
+
     docs = db["planograms"].find(
-        {},
-        {"name": 1, "display_name": 1, "updated_at": 1, "_id": 1}
+        query,
+        {"name": 1, "display_name": 1, "updated_at": 1, "shelves": 1, "tier_names": 1, "store_id": 1, "_id": 1}
     ).sort("updated_at", DESCENDING)
 
     return [
@@ -104,7 +145,10 @@ def list_planograms() -> list:
             "id":           str(d["_id"]),
             "name":         d["name"],
             "display_name": d.get("display_name", d["name"]),
-            "updated_at":   str(d.get("updated_at", ""))
+            "updated_at":   str(d.get("updated_at", "")),
+            "shelves":      d.get("shelves", []),
+            "tier_names":   d.get("tier_names", []),
+            "store_id":     d.get("store_id", None)
         }
         for d in docs
     ]
@@ -149,35 +193,51 @@ def get_products() -> list:
 
 # ─── Compliance Log Collection ────────────────────────────────────────────────
 
-def save_compliance_result(planogram_name: str, status: str, issues: list, actual_layout: list) -> str:
+def save_compliance_result(store_id: str, planogram_display_name: str, status: str, issues: list, actual_layout: list, annotated_image: str) -> str:
     """Lưu kết quả kiểm tra compliance."""
     db = get_db()
     if db is None:
         raise RuntimeError("Không có kết nối MongoDB")
 
     doc = {
-        "planogram_name": planogram_name,
-        "status":         status,
-        "issues":         issues,
-        "actual_layout":  actual_layout,
-        "checked_at":     datetime.utcnow()
+        "store_id":               store_id,
+        "planogram_display_name": planogram_display_name,
+        "status":                 status,
+        "issues":                 issues,
+        "actual_layout":          actual_layout,
+        "annotated_image":        annotated_image,
+        "checked_at":             datetime.utcnow()
     }
     result = db["compliance_logs"].insert_one(doc)
     return str(result.inserted_id)
 
 
-def get_compliance_logs(planogram_name: str = None, limit: int = 20) -> list:
-    """Lấy lịch sử kiểm tra compliance."""
+def get_compliance_logs(store_id: str = None, limit: int = 50) -> list:
+    """Lấy lịch sử kiểm tra compliance, ưu tiên lọc theo store_id."""
     db = get_db()
     if db is None:
         raise RuntimeError("Không có kết nối MongoDB")
 
-    query = {"planogram_name": planogram_name} if planogram_name else {}
+    query = {"store_id": store_id} if store_id else {}
     docs = db["compliance_logs"].find(query).sort("checked_at", DESCENDING).limit(limit)
     return [
         {**d, "_id": str(d["_id"]), "checked_at": str(d["checked_at"])}
         for d in docs
     ]
+
+
+def delete_compliance_log(log_id: str) -> bool:
+    """Xóa một bản ghi compliance log theo ID."""
+    db = get_db()
+    if db is None:
+        raise RuntimeError("Không có kết nối MongoDB")
+    
+    from bson.objectid import ObjectId
+    try:
+        result = db["compliance_logs"].delete_one({"_id": ObjectId(log_id)})
+        return result.deleted_count > 0
+    except Exception:
+        return False
 
 
 # ─── Contracts Collection ─────────────────────────────────────────────────────

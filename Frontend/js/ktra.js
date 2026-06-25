@@ -71,11 +71,21 @@ analyzeBtn.addEventListener('click', async () => {
     errorMessage.classList.add('hidden');
 
     const planogramFileSelect = document.getElementById('planogramFileSelect');
+    const storeSelect = document.getElementById('storeSelect');
     const formData = new FormData();
     formData.append('file', selectedFile);
     formData.append('planogram', JSON.stringify(customPlanogram));
+    
+    if (storeSelect && storeSelect.value) {
+        formData.append('store_id', storeSelect.value);
+    }
+
     const selFile = planogramFileSelect ? planogramFileSelect.value : '';
-    if (selFile) formData.append('planogram_file', selFile);
+    if (selFile) {
+        formData.append('planogram_file', selFile);
+        const selOption = planogramFileSelect.options[planogramFileSelect.selectedIndex];
+        formData.append('planogram_display_name', selOption ? selOption.text : 'Unknown Shelf');
+    }
 
     try {
         const response = await fetch(`${API}/api/compliance`, {

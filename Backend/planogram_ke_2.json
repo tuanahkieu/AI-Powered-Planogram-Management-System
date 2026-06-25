@@ -1,50 +1,25 @@
 {
     "shelves": [
         [
-            "twister-cam",
-            "twister-cam",
-            "twister-cam",
-            "twister-cam",
-            "twister-cam",
-            "twister-cam",
-            "twister-cam"
+            "Coca Cola",
+            "Coca Cola",
+            "Coca Cola",
+            "Coca Cola",
+            "Coca Cola"
         ],
         [
-            "revive-white-chai",
-            "revive-white-chai",
-            "revive-white-chai",
-            "revive-white-chai",
-            "revive-white-chai",
-            "string-red-chai",
-            "string-red-chai",
-            "string-red-chai"
+            "Pepsi",
+            "Pepsi",
+            "Pepsi",
+            "Pepsi",
+            "Pepsi"
         ],
         [
-            "olong-tea",
-            "olong-tea",
-            "olong-teaplus",
-            "olong-teaplus",
-            "olong-teaplus",
-            "olong-teaplus",
-            "olong-teaplus"
-        ],
-        [
-            "aquafina",
-            "aquafina",
-            "aquafina",
-            "aquafina",
-            "aquafina",
-            "aquafina",
-            "aquafina"
-        ],
-        [
-            "aquafina",
-            "aquafina",
-            "aquafina",
-            "aquafina",
-            "aquafina",
-            "aquafina",
-            "aquafina"
+            "Olong Tea",
+            "Olong Tea",
+            "Olong Tea",
+            "Olong Tea",
+            "Olong Tea"
         ]
     ]
 }

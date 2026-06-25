@@ -7,7 +7,7 @@
     const pogState = {
         shelves: [
             {
-                id: 'shelf-1', name: 'Kệ 1',
+                id: 'shelf-1', name: 'Kệ 1', store_id: 'store_1',
                 tiers: [
                     { id: 'tier-1-1', name: 'Tầng 1', maxProducts: 10, products: [] },
                     { id: 'tier-1-2', name: 'Tầng 2', maxProducts: 10, products: [] },
@@ -26,6 +26,7 @@
     let selectedShelfId = pogState.shelves[0].id;
     let draggedProdId   = null;
     let selectedItemEl  = null;
+    let selectedCatalogId = null;  // ID sản phẩm đang chọn trong catalog
     let _lockedRows     = [];  // [{ row, brand, color, end_date }] — tầng bị khóa bởi hợp đồng
 
     // Bảng màu sắc đẹp, đa dạng — tránh trùng lặp
@@ -44,6 +45,7 @@
     }
 
     const shelfSelector = document.getElementById('pogShelfSelector');
+    const storeSelector = document.getElementById('pogStoreSelector');
     const fixture       = document.getElementById('pogFixture');
     const catalog       = document.getElementById('pogCatalog');
     const catalogCount  = document.getElementById('pogCatalogCount');
@@ -56,6 +58,28 @@
     init();
 
     async function init() {
+        if (storeSelector) {
+            storeSelector.addEventListener('change', () => {
+                const btnAddShelf = document.getElementById('pogBtnAddShelf');
+                if (btnAddShelf) btnAddShelf.disabled = !storeSelector.value;
+                shelfSelector.disabled = !storeSelector.value;
+
+                renderShelfSelector();
+                if (shelfSelector.options.length > 0 && shelfSelector.options[0].value) {
+                    shelfSelector.value = shelfSelector.options[0].value;
+                    shelfSelector.dispatchEvent(new Event('change'));
+                } else {
+                    selectedShelfId = null;
+                    fixture.innerHTML = '';
+                    showEmptyProps();
+                }
+            });
+            
+            // Initial state
+            const btnAddShelf = document.getElementById('pogBtnAddShelf');
+            if (btnAddShelf) btnAddShelf.disabled = !storeSelector.value;
+            shelfSelector.disabled = !storeSelector.value;
+        }
         renderCatalog();
         renderShelfSelector();
         renderCanvas();
@@ -65,7 +89,30 @@
 
         // Đảm bảo load products TRƯỚC để autoFillLockedTiers có dữ liệu
         await loadProductsFromMongo(pogState, renderCatalog);
-        await loadSavedShelves();
+        const firstMongoShelfId = await loadSavedShelves();
+
+        // Nếu URL có ?shelf=<mongoName> (từ ke.html bấm Chỉnh sửa), tự chọn đúng kệ
+        const urlParams   = new URLSearchParams(window.location.search);
+        const targetShelf = urlParams.get('shelf');
+        if (targetShelf) {
+            const found = pogState.shelves.find(s => s._mongoName === targetShelf);
+            if (found) {
+                selectedShelfId = found.id;
+                shelfSelector.value = found.id;
+                _lockedRows = [];
+                renderCanvas();
+                showShelfProps(selectedShelfId);
+                await loadShelfDataFromMongo(found.id);
+            }
+        } else if (firstMongoShelfId) {
+            // Không có URL param → tự động chọn kệ mới nhất từ MongoDB
+            selectedShelfId = firstMongoShelfId;
+            shelfSelector.value = firstMongoShelfId;
+            _lockedRows = [];
+            renderCanvas();
+            showShelfProps(selectedShelfId);
+            await loadShelfDataFromMongo(firstMongoShelfId);
+        }
 
         // Auto-refresh contract locks khi user quay lại tab này
         document.addEventListener('visibilitychange', async () => {
@@ -101,12 +148,6 @@
         syncCustomPlanogram();
     }
 
-    /**
-     * Auto-fill: điền sản phẩm đúng brand vào mỗi tầng bị khóa bởi hợp đồng.
-     * - Tầng TRỐNG            → fill đầy đến maxProducts
-     * - Tầng có SP SAI brand  → xóa SP sai, giữ SP đúng, fill thêm cho đủ
-     * - Tầng đã đúng hết      → không thay đổi
-     */
     function autoFillLockedTiers() {
         const shelf = pogState.shelves.find(s => s.id === selectedShelfId);
         if (!shelf) return;
@@ -129,15 +170,20 @@
             const before = tier.products.length;
             tier.products = tier.products.filter(p => isProdMatchingLockedBrand(p, lock));
 
+            // Chọn 1 loại cụ thể (ưu tiên sản phẩm đã có trên tầng, nếu không lấy sản phẩm đầu tiên tìm được)
+            const proto = tier.products.length > 0 ? tier.products[0] : brandProds[0];
+            
+            // Giữ lại các sản phẩm đúng loại cụ thể này (loại bỏ các loại khác dù cùng brand để đồng nhất 1 loại)
+            tier.products = tier.products.filter(p => p.id === proto.id);
+
             // Fill thêm sản phẩm đúng brand cho đến maxProducts
             let idx = 0;
             while (tier.products.length < tier.maxProducts) {
-                const proto = brandProds[idx % brandProds.length];
-                idx++;
                 tier.products.push({
                     ...proto,
                     placedId: 'pl-auto-' + lock.row + '-' + Date.now() + '-' + idx
                 });
+                idx++;
                 anyChange = true;
             }
 
@@ -149,22 +195,22 @@
         }
     }
 
-    /**
-     * Kiểm tra xem sản phẩm có thuộc brand được khóa bởi hợp đồng không.
-     * So sánh tên sản phẩm (lowercase, bỏ dấu cách/gạch ngang) với brand_name.
-     */
     function isProdMatchingLockedBrand(prod, lockInfo) {
         if (!lockInfo) return true; // không có lock → cho phép
         const normalize = s => (s || '').toLowerCase().replace(/[\s\-_]+/g, '');
         const prodNorm  = normalize(prod.name);
         const brandNorm = normalize(lockInfo.brand);
+        
         // 1) So khớp chính xác sau normalize
         if (prodNorm === brandNorm) return true;
-        // 2) Sản phẩm bắt đầu bằng brand (ví dụ: "mirinda-xaxi-chai" vs brand "mirinaxaxi")
-        if (prodNorm.startsWith(brandNorm) || brandNorm.startsWith(prodNorm)) return true;
-        // 3) Chứa nhau — chỉ chấp nhận nếu overlap >= 60% độ dài chuỗi ngắn hơn
-        const shorter = Math.min(prodNorm.length, brandNorm.length);
-        if (shorter >= 4 && (prodNorm.includes(brandNorm) || brandNorm.includes(prodNorm))) return true;
+        
+        // 2) Sản phẩm bắt đầu bằng brand (ví dụ: "mirinda-xaxi-chai" vs brand "mirinda")
+        // Cho phép hợp đồng chung chung (mirinda) dùng sản phẩm cụ thể (mirinda-xaxi)
+        if (prodNorm.startsWith(brandNorm)) return true;
+        
+        // 3) Chứa nhau — chỉ chấp nhận nếu sản phẩm cụ thể chứa tên brand chung chung
+        if (brandNorm.length >= 4 && prodNorm.includes(brandNorm)) return true;
+        
         return false;
     }
 
@@ -180,42 +226,48 @@
     //  LOAD KỆ ĐÃ LƯU TỪ MONGODB
     // ================================================================
     async function loadSavedShelves() {
+        let firstShelfId = null; // ID của kệ đầu tiên (mới nhất) từ MongoDB
         try {
             const res  = await fetch(`${API}/api/planograms`);
             const data = await res.json();
-            if (!data.success || !data.data || data.source !== 'mongodb') return;
+            if (!data.success || !data.data || data.source !== 'mongodb') return null;
 
-            data.data.forEach(item => {
+            data.data.forEach((item, idx) => {
                 let existing = pogState.shelves.find(s => s._mongoName === item.name);
-                if (!existing) existing = pogState.shelves.find(s => s.name === item.display_name);
+                
+                const storeId = item.store_id || null; // Use real store_id from backend
+                
+                // If not found by mongoName, try matching by name AND store_id
+                if (!existing) {
+                    existing = pogState.shelves.find(s => s.name === item.display_name && s.store_id === storeId);
+                }
 
                 if (existing) {
                     existing._mongoName = item.name;
                     existing._loaded    = false;
+                    existing.store_id   = storeId;
+                    if (idx === 0) firstShelfId = existing.id;
                 } else {
                     const newId = 'shelf-mongo-' + item.name;
                     pogState.shelves.push({
                         id: newId, name: item.display_name,
                         _mongoName: item.name, _loaded: false,
+                        store_id: storeId,
                         tiers: [
                             { id: `t-${newId}-1`, name: 'Tầng 1', maxProducts: 10, products: [] },
                             { id: `t-${newId}-2`, name: 'Tầng 2', maxProducts: 10, products: [] },
                             { id: `t-${newId}-3`, name: 'Tầng 3', maxProducts: 10, products: [] },
                         ]
                     });
+                    if (idx === 0) firstShelfId = newId;
                 }
             });
 
             renderShelfSelector();
-
-            // Load contract locks cho kệ đang được chọn hiện tại
-            const currentShelf = pogState.shelves.find(s => s.id === selectedShelfId);
-            if (currentShelf?._mongoName) {
-                await loadContractLocks(currentShelf._mongoName);
-            }
         } catch (e) {
             console.warn('Không thể tải danh sách kệ:', e.message);
         }
+        return firstShelfId;
     }
 
     async function loadShelfDataFromMongo(shelfId) {
@@ -269,7 +321,7 @@
         catalogCount.textContent = pogState.products.length;
         pogState.products.forEach(prod => {
             const el = document.createElement('div');
-            el.className = 'pog-cat-item';
+            el.className = 'pog-cat-item' + (prod.id === selectedCatalogId ? ' pog-cat-selected' : '');
             el.draggable = true;
             el.dataset.prodId = prod.id;
             el.innerHTML = `
@@ -286,6 +338,17 @@
                 e.dataTransfer.setData('text/plain', prod.id);
             });
 
+            // Click: hiển thị chi tiết sản phẩm ở props panel
+            el.addEventListener('click', e => {
+                if (e.target.closest('.pog-cat-del-btn')) return;
+                selectedCatalogId = prod.id;
+                clearItemSel();
+                // Bỏ highlight tất cả catalog items
+                document.querySelectorAll('.pog-cat-item').forEach(i => i.classList.remove('pog-cat-selected'));
+                el.classList.add('pog-cat-selected');
+                showCatalogProductProps(prod);
+            });
+
             el.querySelector('.pog-cat-del-btn').addEventListener('click', e => {
                 e.stopPropagation();
                 e.preventDefault();
@@ -293,6 +356,60 @@
             });
 
             catalog.appendChild(el);
+        });
+    }
+
+    // ================================================================
+    //  CATALOG PRODUCT DETAIL — hiện thông tin sản phẩm khi click
+    // ================================================================
+    function showCatalogProductProps(prod) {
+        // Đếm số lần sản phẩm xuất hiện trên kệ hiện tại
+        const currentShelf = pogState.shelves.find(s => s.id === selectedShelfId);
+        let totalPlaced = 0;
+        const tierBreakdown = [];
+        if (currentShelf) {
+            currentShelf.tiers.forEach(tier => {
+                const count = tier.products.filter(p => p.id === prod.id).length;
+                if (count > 0) {
+                    totalPlaced += count;
+                    tierBreakdown.push(`${tier.name}: ${count} SP`);
+                }
+            });
+        }
+
+        const placedInfo = totalPlaced > 0
+            ? `<div class="pog-prod-placed-info">
+                <span class="pog-prod-placed-count">${totalPlaced} SP trên kệ</span>
+                <span class="pog-prod-placed-detail">${tierBreakdown.join(' · ')}</span>
+               </div>`
+            : `<div class="pog-prod-placed-info pog-prod-placed-empty">Chưa đặt trên kệ nào</div>`;
+
+        propsContent.innerHTML = `
+            <div class="pog-cat-detail">
+                <div class="pog-cat-detail-hero" style="background:${prod.color}20;border-color:${prod.color}40">
+                    <div class="pog-cat-detail-dot" style="background:${prod.color}"></div>
+                    <div class="pog-cat-detail-title">${prod.name}</div>
+                    <div class="pog-cat-detail-code">${prod.code}</div>
+                </div>
+                <div class="pog-prop-row"><span class="pog-prop-label">Tên sản phẩm</span><span class="pog-prop-value">${prod.name}</span></div>
+                <div class="pog-prop-row"><span class="pog-prop-label">Mã SKU</span><span class="pog-prop-value" style="font-family:monospace;letter-spacing:0.05em">${prod.code || '—'}</span></div>
+                <div class="pog-prop-row"><span class="pog-prop-label">Danh mục</span><span class="pog-prop-value">${prod.category || '—'}</span></div>
+                <div class="pog-prop-row">
+                    <span class="pog-prop-label">Màu đại diện</span>
+                    <span class="pog-prop-value" style="display:flex;align-items:center;gap:0.5rem">
+                        <span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:${prod.color};flex-shrink:0"></span>
+                        <span style="font-family:monospace;font-size:0.82rem">${prod.color}</span>
+                    </span>
+                </div>
+                ${placedInfo}
+                <hr class="pog-divider">
+                <button class="pog-danger-btn" id="catDetailDelBtn">Xóa Sản Phẩm Này</button>
+            </div>`;
+
+        document.getElementById('catDetailDelBtn').addEventListener('click', () => {
+            selectedCatalogId = null;
+            deleteCatalogProduct(prod.id);
+            showEmptyProps();
         });
     }
 
@@ -315,7 +432,21 @@
     // ================================================================
     function renderShelfSelector() {
         shelfSelector.innerHTML = '';
-        pogState.shelves.forEach(s => {
+        const selectedStore = storeSelector ? storeSelector.value : '';
+        
+        if (!selectedStore) {
+            shelfSelector.innerHTML = '<option value="">-- Cần chọn cửa hàng --</option>';
+            return;
+        }
+
+        const filtered = pogState.shelves.filter(s => s.store_id === selectedStore);
+
+        if (filtered.length === 0) {
+            shelfSelector.innerHTML = '<option value="">-- Cửa hàng chưa có kệ --</option>';
+            return;
+        }
+
+        filtered.forEach(s => {
             const opt = document.createElement('option');
             opt.value = s.id;
             opt.textContent = s.name;
@@ -325,6 +456,11 @@
     }
 
     shelfSelector.addEventListener('change', async () => {
+        if (!shelfSelector.value) {
+            fixture.innerHTML = '';
+            showEmptyProps();
+            return;
+        }
         selectedShelfId = shelfSelector.value;
         _lockedRows = [];
         renderCanvas();
@@ -367,7 +503,7 @@
             drop.className = 'pog-tier-drop';
             drop.dataset.tierId = tier.id;
             const slotPx = 40;
-            const tierW  = (tier.maxProducts * slotPx + 16) + 'px';
+            const tierW  = (Math.max(2, tier.products.length + 1) * slotPx + 16) + 'px';
             drop.style.width    = tierW;
             drop.style.minWidth = 'unset';
             drop.style.flex     = 'none';
@@ -376,7 +512,7 @@
             const badge = document.createElement('div');
             badge.className = 'pog-count-badge';
             badge.id = 'pgbadge-' + tier.id;
-            badge.textContent = `${tier.products.length}/${tier.maxProducts}`;
+            badge.textContent = `${tier.products.length} SP`;
             drop.appendChild(badge);
 
             tier.products.forEach(p => drop.appendChild(makePlacedEl(p, tier, locked)));
@@ -415,7 +551,7 @@
                 const curLockInfo = getRowLockInfo(tierIndex);
                 if (curLocked) {
                     if (!isProdMatchingLockedBrand(prod, curLockInfo)) {
-                        showToast(`🔒 Tầng này chỉ dành cho "${curLockInfo.brand}" theo hợp đồng!`, 'error');
+                        showToast(`Tầng này chỉ dành cho "${curLockInfo.brand}" theo hợp đồng!`, 'error');
                         draggedProdId = null;
                         return;
                     }
@@ -431,6 +567,7 @@
                 // Re-check lock sau khi thêm (state đã cập nhật)
                 drop.insertBefore(makePlacedEl(entry, tier, curLocked), badge);
                 updateBadge(tier);
+                resizeTierDrop(tier, drop, row);
                 syncCustomPlanogram();
                 draggedProdId = null;
             });
@@ -476,7 +613,18 @@
 
     function updateBadge(tier) {
         const b = document.getElementById('pgbadge-' + tier.id);
-        if (b) b.textContent = `${tier.products.length}/${tier.maxProducts}`;
+        if (b) b.textContent = `${tier.products.length} SP`;
+    }
+
+    const SLOT_PX = 40;
+    function resizeTierDrop(tier, dropEl, rowEl) {
+        // Nếu không truyền DOM ref thì tự tìm
+        const drop = dropEl || document.querySelector(`.pog-tier-drop[data-tier-id="${tier.id}"]`);
+        const row  = rowEl  || drop?.closest('.pog-tier-row');
+        if (!drop || !row) return;
+        const w = (Math.max(2, tier.products.length + 1) * SLOT_PX + 16) + 'px';
+        drop.style.width = w;
+        row.style.width  = w;
     }
 
     function clearItemSel() {
@@ -497,8 +645,8 @@
         }) : null;
 
         const removeBtn = locked
-            ? `<div class="pog-lock-notice">🔒 Sản phẩm này thuộc hợp đồng với <strong>${lockInfo?.brand || 'nhãn hàng'}</strong> (hết hạn ${lockInfo?.end_date || '—'}). Không thể xóa khi hợp đồng còn hiệu lực.</div>`
-            : `<button class="pog-danger-btn" id="pogBtnRemoveItem">🗑 Xóa Khỏi Tầng</button>`;
+            ? `<div class="pog-lock-notice">Sản phẩm này thuộc hợp đồng với <strong>${lockInfo?.brand || 'nhãn hàng'}</strong> (hết hạn ${lockInfo?.end_date || '—'}). Không thể xóa khi hợp đồng còn hiệu lực.</div>`
+            : `<button class="pog-danger-btn" id="pogBtnRemoveItem">Xóa Khỏi Tầng</button>`;
 
         propsContent.innerHTML = `
             <div class="pog-prop-row"><span class="pog-prop-label">Tên</span><span class="pog-prop-value">${entry.name}</span></div>
@@ -517,6 +665,7 @@
                 if (idx !== -1) tier.products.splice(idx, 1);
                 if (selectedItemEl) { selectedItemEl.remove(); selectedItemEl = null; }
                 updateBadge(tier);
+                resizeTierDrop(tier);
                 syncCustomPlanogram();
                 showEmptyProps();
             });
@@ -537,7 +686,7 @@
             </div>`).join('');
 
         const clearTierOptions = shelf.tiers.map(t =>
-            `<option value="${t.id}">${t.name} (${t.products.length} SP)</option>`).join('');
+            `<option value="${t.id}" ${t.id === activeTierId ? 'selected' : ''}>${t.name} (${t.products.length} SP)</option>`).join('');
 
         propsContent.innerHTML = `
             <div class="pog-cfg-form">
@@ -556,22 +705,22 @@
                     <input type="number" class="pog-input" id="cfgMaxProd" value="${shelf.tiers[0]?.maxProducts ?? 10}" min="1" max="30">
                 </div>
                 <div class="pog-apply-row">
-                    <button class="pog-apply-btn" id="cfgApplyTiers">✔ Áp Dụng</button>
+                    <button class="pog-apply-btn" id="cfgApplyTiers">Áp Dụng</button>
                 </div>
                 <hr class="pog-divider">
                 <div class="pog-section-title">Tên Từng Tầng</div>
                 <div class="pog-tier-names" id="cfgTierNames">${tierNamesHTML}</div>
                 <div class="pog-apply-row">
-                    <button class="pog-apply-btn" id="cfgSaveTierNames">💾 Lưu Tên Tầng</button>
+                    <button class="pog-apply-btn" id="cfgSaveTierNames">Lưu Tên Tầng</button>
                 </div>
                 <hr class="pog-divider">
                 <div class="pog-section-title">Xóa Hàng Sản Phẩm</div>
                 <select class="pog-input" id="cfgClearTierSel" style="margin-bottom:0.4rem;">${clearTierOptions}</select>
                 <button class="pog-apply-btn" id="cfgClearTier" style="background:rgba(245,158,11,0.12);border-color:rgba(245,158,11,0.35);color:#fbbf24;width:100%;margin-bottom:0.5rem;">
-                    🧹 Xóa Toàn Bộ Tầng Đã Chọn
+                    Xóa Toàn Bộ Tầng Đã Chọn
                 </button>
                 <hr class="pog-divider">
-                <button class="pog-danger-btn" id="cfgDeleteShelf">🗑 Xóa Kệ Này</button>
+                <button class="pog-danger-btn" id="cfgDeleteShelf">Xóa Kệ Này</button>
             </div>`;
 
         document.getElementById('cfgApplyTiers').addEventListener('click', () => {
@@ -615,7 +764,7 @@
             const tierIndex = shelf.tiers.indexOf(tier);
             if (isRowLocked(tierIndex)) {
                 const info = getRowLockInfo(tierIndex);
-                showToast(`🔒 Tầng này đang bị khóa bởi hợp đồng với "${info?.brand}"`, 'error');
+                showToast(`Tầng này đang bị khóa bởi hợp đồng với "${info?.brand}"`, 'error');
                 return;
             }
             tier.products = [];
@@ -625,8 +774,30 @@
             showToast(`Đã xóa toàn bộ SP trong ${tier.name}!`, 'success');
         });
 
-        document.getElementById('cfgDeleteShelf').addEventListener('click', () => {
+        document.getElementById('cfgDeleteShelf').addEventListener('click', async () => {
             if (pogState.shelves.length <= 1) { showToast('Cần ít nhất 1 kệ!', 'error'); return; }
+
+            const shelfToDelete = pogState.shelves.find(s => s.id === shelfId);
+            if (!shelfToDelete) return;
+
+            // Nếu kệ đã được lưu lên MongoDB, gọi API xóa trước
+            if (shelfToDelete._mongoName) {
+                try {
+                    const res = await fetch(`${API}/api/planograms/${shelfToDelete._mongoName}`, {
+                        method: 'DELETE'
+                    });
+                    const result = await res.json();
+                    if (!result.success) {
+                        showToast(`Không thể xóa kệ khỏi MongoDB: ${result.error || 'Lỗi không xác định'}`, 'error');
+                        return;
+                    }
+                } catch (err) {
+                    showToast(`Lỗi kết nối — không thể xóa: ${err.message}`, 'error');
+                    return;
+                }
+            }
+
+            // Xóa khỏi state sau khi xóa MongoDB thành công
             pogState.shelves = pogState.shelves.filter(s => s.id !== shelfId);
             selectedShelfId  = pogState.shelves[0].id;
             renderShelfSelector();
@@ -645,16 +816,26 @@
     // ================================================================
     function bindTopbarBtns() {
         document.getElementById('pogBtnAddShelf').addEventListener('click', () => {
+            if (storeSelector && !storeSelector.value) {
+                showToast('Vui lòng chọn cửa hàng trước khi thêm kệ!', 'error');
+                return;
+            }
+            const selectedStore = storeSelector ? storeSelector.value : 'store_1';
             const newId = 'shelf-' + Date.now();
-            const num   = pogState.shelves.length + 1;
+            const storeShelves = pogState.shelves.filter(s => s.store_id === selectedStore);
+            const num   = storeShelves.length + 1;
             pogState.shelves.push({
                 id: newId, name: `Kệ ${num}`,
+                store_id: selectedStore,
                 tiers: [
                     { id:`t-${newId}-1`, name:'Tầng 1', maxProducts:10, products:[] },
                     { id:`t-${newId}-2`, name:'Tầng 2', maxProducts:10, products:[] },
                     { id:`t-${newId}-3`, name:'Tầng 3', maxProducts:10, products:[] },
                 ]
             });
+            if (storeSelector && !storeSelector.value) {
+                storeSelector.value = selectedStore;
+            }
             selectedShelfId = newId;
             renderShelfSelector();
             renderCanvas();
@@ -662,15 +843,76 @@
             showToast(`Đã thêm Kệ ${num}!`, 'success');
         });
 
+        // Import từ AI (lấy labels từ model)
+        const btnImportAI = document.getElementById('pogBtnImportAI');
+        if (btnImportAI) {
+            btnImportAI.addEventListener('click', async () => {
+                btnImportAI.textContent = '⏳ Đang tải...';
+                btnImportAI.disabled = true;
+                try {
+                    const res = await fetch(`${API}/api/model-labels`);
+                    const data = await res.json();
+                    if (data.success && data.labels) {
+                        let addedCount = 0;
+                        data.labels.forEach((label, idx) => {
+                            // Kiểm tra xem sản phẩm đã có trong danh mục chưa
+                            const exists = pogState.products.some(p => p.name.toLowerCase() === label.toLowerCase());
+                            if (!exists) {
+                                // Chọn màu ngẫu nhiên cho sản phẩm AI
+                                const colors = ['#ef4444', '#0ea5e9', '#f59e0b', '#10b981', '#8b5cf6', '#ec4899', '#14b8a6', '#f43f5e'];
+                                const color = colors[idx % colors.length];
+                                
+                                pogState.products.push({
+                                    id: 'p-ai-' + Date.now() + idx,
+                                    name: label,
+                                    code: `AI-${String(idx + 1).padStart(3, '0')}`,
+                                    category: 'Nhận diện AI',
+                                    color: color
+                                });
+                                addedCount++;
+                            }
+                        });
+                        
+                        if (addedCount > 0) {
+                            renderCatalog();
+                            saveProductsToMongo(pogState.products);
+                            showToast(`Đã import ${addedCount} sản phẩm từ AI!`, 'success');
+                        } else {
+                            showToast('Tất cả sản phẩm AI đã có trong danh mục!', 'success');
+                        }
+                    } else {
+                        showToast('Lỗi: Không thể tải nhãn từ AI', 'error');
+                    }
+                } catch (err) {
+                    showToast('Lỗi kết nối tới Backend', 'error');
+                    console.error(err);
+                } finally {
+                    btnImportAI.textContent = '✨ Import từ AI';
+                    btnImportAI.disabled = false;
+                }
+            });
+        }
+
         document.getElementById('pogBtnSave').addEventListener('click', async () => {
+            if (storeSelector && !storeSelector.value) {
+                showToast('Vui lòng chọn cửa hàng!', 'error');
+                return;
+            }
             const shelf      = pogState.shelves.find(s => s.id === selectedShelfId);
+            if (!shelf) {
+                showToast('Không có kệ để lưu!', 'error');
+                return;
+            }
             const exportData = {
                 shelves: (shelf ? shelf.tiers : []).map(t => t.products.map(p => p.name))
             };
             syncCustomPlanogram();
 
-            const shelfIndex  = pogState.shelves.findIndex(s => s.id === selectedShelfId) + 1;
-            const filename    = `planogram_ke_${shelfIndex}.json`;
+            const storeId = shelf ? shelf.store_id : (storeSelector ? storeSelector.value : null);
+            const storeShelves = pogState.shelves.filter(s => s.store_id === storeId);
+            const shelfIndex  = storeShelves.findIndex(s => s.id === selectedShelfId) + 1;
+            const prefix = storeId ? `${storeId}_` : '';
+            const filename    = `planogram_${prefix}ke_${shelfIndex}.json`;
             const displayName = shelf ? shelf.name : `Kệ ${shelfIndex}`;
 
             try {
@@ -681,7 +923,8 @@
                         ...exportData,
                         _filename:     filename,
                         _display_name: displayName,
-                        _products:     pogState.products
+                        _products:     pogState.products,
+                        store_id:      storeId
                     })
                 });
                 const result = await res.json();
@@ -690,26 +933,19 @@
                         shelf._mongoName = filename.replace('.json', '');
                         shelf._loaded    = true;
                     }
-                    showToast(`✅ Đã lưu "${displayName}" lên MongoDB!`, 'success');
+                    showToast(`Đã lưu "${displayName}" lên MongoDB!`, 'success');
                     renderShelfSelector();
                 } else if (res.status === 409) {
                     // Tầng bị khóa bởi hợp đồng
                     const msgs = (result.violations || []).join('\n• ');
-                    showToast(`🔒 Không thể lưu — tầng bị khóa bởi hợp đồng active`, 'error');
+                    showToast(`Không thể lưu — tầng bị khóa bởi hợp đồng active`, 'error');
                     // Hiển thị chi tiết trong alert
                     alert(`Không thể lưu vì các tầng sau đang bị khóa bởi hợp đồng:\n\n• ${msgs}\n\nHãy xóa hợp đồng liên quan hoặc chờ hợp đồng hết hạn.`);
                 } else {
                     throw new Error(result.error || 'Lỗi không xác định');
                 }
             } catch (err) {
-                if (!err.message.includes('locked')) {
-                    const blob = new Blob([JSON.stringify(exportData, null, 4)], { type: 'application/json' });
-                    const url  = URL.createObjectURL(blob);
-                    const a    = document.createElement('a');
-                    a.href = url; a.download = filename; a.click();
-                    URL.revokeObjectURL(url);
-                    showToast('⚠️ Backend lỗi — đã tải file về máy', 'error');
-                }
+                showToast(`Lỗi kết nối — không thể lưu: ${err.message}`, 'error');
             }
         });
     }
@@ -749,6 +985,56 @@
             ['pogProdName','pogProdCode','pogProdCategory'].forEach(id => document.getElementById(id).value = '');
             document.getElementById('pogProdColor').value = randomColor();
         });
+
+        // Add Store Modal Binding
+        const storeModal = document.getElementById('pogModalAddStore');
+        const openStoreModal = () => { storeModal.classList.remove('hidden'); document.getElementById('pogStoreName').focus(); };
+        const closeStoreModal = () => storeModal.classList.add('hidden');
+
+        const btnAddStore = document.getElementById('pogBtnAddStore');
+        if (btnAddStore) btnAddStore.addEventListener('click', openStoreModal);
+
+        const btnStoreClose = document.getElementById('pogStoreModalClose');
+        if (btnStoreClose) btnStoreClose.addEventListener('click', closeStoreModal);
+
+        const btnStoreCancel = document.getElementById('pogStoreModalCancel');
+        if (btnStoreCancel) btnStoreCancel.addEventListener('click', closeStoreModal);
+
+        if (storeModal) storeModal.addEventListener('click', e => { if (e.target === storeModal) closeStoreModal(); });
+
+        const btnStoreConfirm = document.getElementById('pogStoreModalConfirm');
+        if (btnStoreConfirm) {
+            btnStoreConfirm.addEventListener('click', async () => {
+                const name = document.getElementById('pogStoreName').value.trim();
+                if (!name) { showToast('Vui lòng nhập tên cửa hàng', 'error'); return; }
+                
+                try {
+                    const res = await fetch(`${API}/api/stores`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        showToast(`Đã thêm cửa hàng "${name}"`, 'success');
+                        closeStoreModal();
+                        document.getElementById('pogStoreName').value = '';
+                        // Reload stores (using loadStores from shared.js)
+                        if (typeof loadStores === 'function') {
+                            await loadStores();
+                            if (storeSelector) {
+                                storeSelector.value = data.store.store_id;
+                                storeSelector.dispatchEvent(new Event('change'));
+                            }
+                        }
+                    } else {
+                        showToast(data.error || 'Lỗi khi tạo cửa hàng', 'error');
+                    }
+                } catch (e) {
+                    showToast('Lỗi kết nối', 'error');
+                }
+            });
+        }
     }
 
     // ================================================================
