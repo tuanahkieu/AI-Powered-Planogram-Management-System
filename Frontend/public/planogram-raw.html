@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planogram Builder</title>
+    <link rel="stylesheet" href="/src/style.css">
+    <link rel="stylesheet" href="/src/styles/global.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { margin: 0; padding: 0; overflow: hidden; }
+        /* Override sidebar margin */
+        .main-content { margin-left: 0 !important; width: 100vw !important; height: 100vh !important; }
+    </style>
+</head>
+<body style="background: linear-gradient(135deg, hsl(var(--primary) / 0.1), hsl(var(--primary) / 0.05), hsl(var(--primary) / 0.2)); color: hsl(var(--foreground));">
+    <main class="pog-page-layout" id="main-content">
+        <!-- POG Top Bar -->
+        <div class="pog-topbar">
+            <div class="pog-topbar-left">
+                <h1 style="font-size:1.4rem;font-weight:700;color:#1e293b;">Tạo Planogram</h1>
+                <p style="font-size:0.85rem;color:#64748b;margin-top:2px;">Thiết kế sơ đồ trưng bày · Kéo sản phẩm vào kệ</p>
+            </div>
+            <div class="pog-topbar-center" style="display:flex;align-items:center;flex-wrap:wrap;gap:0.5rem;">
+                <label style="font-size:0.85rem;font-weight:600;color:#475569;">Cửa hàng:</label>
+                <select id="pogStoreSelector" class="pog-select" style="min-width:140px;">
+                    <option value="">-- Chọn cửa hàng --</option>
+                </select>
+                <button class="pog-btn-ghost" id="pogBtnAddStore" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;">＋ Cửa Hàng</button>
+
+                <label style="font-size:0.85rem;font-weight:600;color:#475569;margin-left:0.5rem;">Kệ đang chỉnh:</label>
+                <select id="pogShelfSelector" class="pog-select" style="min-width:100px;">
+                    <option value="shelf-1">Kệ 1</option>
+                </select>
+                <button class="pog-btn-ghost" id="pogBtnAddShelf">＋ Thêm Kệ</button>
+            </div>
+            <div class="pog-topbar-right" style="flex-wrap:wrap;">
+                <button class="pog-btn-ghost" id="pogBtnImportAI" style="color: #8b5cf6; border-color: #8b5cf6; font-weight: 600;">✨ Import từ AI</button>
+                <button class="pog-btn-ghost" id="pogBtnAddProduct">＋ Sản Phẩm</button>
+                <button class="btn btn-primary" id="pogBtnSave" style="width:auto;padding:0.5rem 1.2rem;font-size:0.85rem;">Lưu</button>
+            </div>
+        </div>
+
+        <!-- POG 3-column layout -->
+        <div class="pog-layout">
+            <aside class="pog-catalog-panel">
+                <div class="pog-panel-title">Danh Mục Sản Phẩm <span class="pog-badge" id="pogCatalogCount">0</span></div>
+                <div class="pog-catalog" id="pogCatalog"></div>
+            </aside>
+            <main class="pog-canvas-area">
+                <div class="pog-fixture" id="pogFixture"></div>
+            </main>
+            <aside class="pog-props-panel">
+                <div class="pog-panel-title">Thuộc Tính</div>
+                <div id="pogPropsContent" class="pog-props-body">
+                    <p class="pog-empty-state">Bấm vào kệ để cấu hình số tầng, số sản phẩm tối đa và tên tầng.</p>
+                </div>
+            </aside>
+        </div>
+
+        <!-- MODAL: Add Store -->
+        <div class="modal-backdrop hidden" id="pogModalAddStore">
+            <div class="modal-card">
+                <div class="modal-card-header">
+                    <span>Thêm Cửa Hàng Mới</span>
+                    <button class="modal-x" id="pogStoreModalClose">✕</button>
+                </div>
+                <div class="modal-card-body">
+                    <div class="modal-field">
+                        <label>Tên cửa hàng *</label>
+                        <input type="text" id="pogStoreName" class="pog-input" placeholder="VD: Cửa hàng Cầu Giấy">
+                    </div>
+                </div>
+                <div class="modal-card-footer">
+                    <button class="pog-btn-ghost" id="pogStoreModalCancel">Hủy</button>
+                    <button class="btn btn-primary" id="pogStoreModalConfirm">Tạo Mới</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL: Add Product -->
+        <div class="modal-backdrop hidden" id="pogModalAddProduct">
+            <div class="modal-card">
+                <div class="modal-card-header">
+                    <span>Thêm Sản Phẩm Mới</span>
+                    <button class="modal-x" id="pogModalClose">✕</button>
+                </div>
+                <div class="modal-card-body">
+                    <div class="modal-field"><label>Tên sản phẩm *</label><input type="text" id="pogProdName" class="pog-input"></div>
+                    <div class="modal-field"><label>Mã SKU</label><input type="text" id="pogProdCode" class="pog-input"></div>
+                    <div class="modal-field"><label>Danh mục</label><input type="text" id="pogProdCategory" class="pog-input"></div>
+                    <div class="modal-field"><label>Màu đại diện</label><input type="color" id="pogProdColor" class="pog-color-input" value="#6366f1"></div>
+                </div>
+                <div class="modal-card-footer">
+                    <button class="pog-btn-ghost" id="pogModalCancel">Hủy</button>
+                    <button class="btn btn-primary" id="pogModalConfirm">Thêm</button>
+                </div>
+            </div>
+        </div>
+        <div class="pog-toast hidden" id="pogToast"></div>
+    </main>
+    <script type="module" src="/src/pages/shared.js"></script>
+    <script type="module" src="/src/pages/planogram.js"></script>
+</body>
+</html>
