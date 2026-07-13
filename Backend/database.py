@@ -30,7 +30,12 @@ def get_db():
         mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017/planogram_db")
         db_name   = os.getenv("MONGO_DB_NAME", "planogram_db")
         try:
-            _client = MongoClient(mongo_uri, serverSelectionTimeoutMS=5000, tlsCAFile=certifi.where())
+            _client = MongoClient(
+                mongo_uri, 
+                serverSelectionTimeoutMS=5000, 
+                tlsCAFile=certifi.where(),
+                tlsAllowInvalidCertificates=True
+            )
             _client.admin.command("ping")
             _db = _client[db_name]
             print(f"✅ Kết nối MongoDB thành công: {db_name}")
@@ -68,6 +73,15 @@ def list_stores() -> list:
         return []
     docs = db["stores"].find({}, {"_id": 0}).sort("created_at", DESCENDING)
     return list(docs)
+
+def delete_store(store_id: str) -> bool:
+    """Xóa một cửa hàng theo store_id."""
+    db = get_db()
+    if db is None:
+        raise RuntimeError("Không có kết nối MongoDB")
+    
+    result = db["stores"].delete_one({"store_id": store_id})
+    return result.deleted_count > 0
 
 
 # ─── Planogram Collection ─────────────────────────────────────────────────────

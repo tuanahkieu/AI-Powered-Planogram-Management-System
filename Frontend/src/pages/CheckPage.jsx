@@ -56,8 +56,7 @@ export default function CheckPage() {
     } catch (e) { console.warn(e); }
   };
 
-  const handleFileChange = (e) => {
-    const f = e.target.files[0];
+  const processFile = (f) => {
     if (f && f.type.startsWith('image/')) {
       setFile(f);
       const reader = new FileReader();
@@ -66,6 +65,23 @@ export default function CheckPage() {
       setResult(null);
       setError('');
     }
+  };
+
+  const handleFileChange = (e) => {
+    if (e.target.files && e.target.files.length > 0) {
+      processFile(e.target.files[0]);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      processFile(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
   };
 
   const handleAnalyze = async () => {
@@ -149,6 +165,8 @@ export default function CheckPage() {
                 <motion.div 
                   key="upload" 
                   onClick={() => fileInputRef.current?.click()}
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
                   initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                   className="border-2 border-dashed border-border rounded-xl p-12 flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-colors"
                 >
@@ -162,6 +180,8 @@ export default function CheckPage() {
                 <motion.div 
                   key="preview" 
                   onClick={() => fileInputRef.current?.click()}
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
                   initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
                   className="relative rounded-xl overflow-hidden cursor-pointer group border border-border"
                 >

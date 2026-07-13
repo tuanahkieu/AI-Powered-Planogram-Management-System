@@ -1039,6 +1039,41 @@ import { API, customPlanogram, allFetchedPlanograms, loadStores, loadPlanogramFi
                 }
             });
         }
+
+        const btnDeleteStore = document.getElementById('pogBtnDeleteStore');
+        if (btnDeleteStore) {
+            btnDeleteStore.addEventListener('click', async () => {
+                if (!storeSelector) return;
+                const storeId = storeSelector.value;
+                if (!storeId) {
+                    showToast('Vui lòng chọn cửa hàng cần xóa', 'error');
+                    return;
+                }
+                
+                const storeName = storeSelector.options[storeSelector.selectedIndex].text;
+                if (!confirm(`Bạn có chắc chắn muốn xóa cửa hàng "${storeName}" không?\nLưu ý: Hành động này không thể hoàn tác.`)) return;
+
+                try {
+                    const res = await fetch(`${API}/api/stores/${storeId}`, {
+                        method: 'DELETE'
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        showToast(`Đã xóa cửa hàng "${storeName}"`, 'success');
+                        if (typeof loadStores === 'function') {
+                            await loadStores();
+                            if (storeSelector) {
+                                storeSelector.dispatchEvent(new Event('change'));
+                            }
+                        }
+                    } else {
+                        showToast(data.error || 'Lỗi khi xóa cửa hàng', 'error');
+                    }
+                } catch (e) {
+                    showToast('Lỗi kết nối', 'error');
+                }
+            });
+        }
     }
 
     // ================================================================

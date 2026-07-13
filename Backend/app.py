@@ -40,6 +40,7 @@ try:
         delete_contract as mongo_delete_contract,
         list_stores as mongo_list_stores,
         save_store as mongo_save_store,
+        delete_store as mongo_delete_store,
         get_db
     )
     MONGO_AVAILABLE = get_db() is not None
@@ -59,6 +60,15 @@ else:
 
 def load_planogram(filename=None):
     if filename:
+        name_slug = filename.replace('.json', '')
+        if MONGO_AVAILABLE:
+            try:
+                doc = mongo_get_planogram(name_slug)
+                if doc:
+                    return doc
+            except Exception as e:
+                print(f"Lỗi khi lấy kệ từ MongoDB: {e}")
+                
         # Sanitize to prevent path traversal
         import re
         filename = re.sub(r'[^a-zA-Z0-9_\-\.]', '_', filename)
@@ -66,7 +76,15 @@ def load_planogram(filename=None):
             filename += '.json'
         plan_path = os.path.join(BASE_DIR, filename)
     else:
+        if MONGO_AVAILABLE:
+            try:
+                doc = mongo_get_planogram('planogram5')
+                if doc:
+                    return doc
+            except Exception as e:
+                pass
         plan_path = os.path.join(BASE_DIR, 'planogram5.json')
+        
     if os.path.exists(plan_path):
         with open(plan_path, 'r') as f:
             return json.load(f)
@@ -456,10 +474,6 @@ def save_planogram():
                 products=products,
                 store_id=store_id
             )
-            # Backup JSON
-            plan_path = os.path.join(BASE_DIR, filename)
-            with open(plan_path, 'w', encoding='utf-8') as f:
-                json.dump(data, f, ensure_ascii=False, indent=4)
             return jsonify({
                 'success':      True,
                 'filename':     filename,
@@ -468,10 +482,7 @@ def save_planogram():
                 'mongo_id':     result['id']
             })
         else:
-            plan_path = os.path.join(BASE_DIR, filename)
-            with open(plan_path, 'w', encoding='utf-8') as f:
-                json.dump(data, f, ensure_ascii=False, indent=4)
-            return jsonify({'success': True, 'filename': filename, 'source': 'json_file', 'path': plan_path})
+            return jsonify({'error': 'MongoDB không khả dụng'}), 503
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -497,6 +508,19 @@ def create_store_route():
             return jsonify({'error': 'Thiếu tên cửa hàng'}), 400
         result = mongo_save_store(name)
         return jsonify({'success': True, 'store': result})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/stores/<store_id>', methods=['DELETE'])
+def delete_store_route(store_id):
+    if not MONGO_AVAILABLE:
+        return jsonify({'error': 'MongoDB không khả dụng'}), 503
+    try:
+        success = mongo_delete_store(store_id)
+        if success:
+            return jsonify({'success': True, 'message': 'Đã xóa cửa hàng'})
+        return jsonify({'success': False, 'error': 'Không tìm thấy cửa hàng'}), 404
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
