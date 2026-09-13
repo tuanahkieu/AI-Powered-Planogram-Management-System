@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Store, Trash2, Edit, Layers } from 'lucide-react';
-import { API } from './shared.js';
+import { API } from '../../utils/shared.js';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -66,8 +66,8 @@ export default function ShelvesPage() {
     <div className="p-8 max-w-7xl mx-auto space-y-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Quản Lý Kệ Hàng</h1>
-          <p className="text-muted-foreground mt-2">Danh sách kệ hàng đang lưu trữ trên hệ thống</p>
+          <h1 className="text-3xl font-heading font-bold tracking-tight gradient-ai-text">Quản Lý Kệ Hàng</h1>
+          <p className="text-muted-foreground mt-2">Quản lý không gian trưng bày tại các cửa hàng</p>
         </div>
       </div>
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trash2, X, RefreshCw } from 'lucide-react';
-import { API } from './shared.js';
+import { API } from '../../utils/shared.js';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -74,8 +74,8 @@ export default function HistoryPage() {
     <div className="p-8 max-w-7xl mx-auto space-y-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Lịch Sử Phân Tích</h1>
-          <p className="text-muted-foreground mt-2">Xem lại kết quả kiểm tra trưng bày của các cửa hàng</p>
+          <h1 className="text-3xl font-heading font-bold tracking-tight gradient-ai-text">Lịch Sử Phân Tích</h1>
+          <p className="text-muted-foreground mt-2">Xem lại kết quả quét tự động và đánh giá AI</p>
         </div>
         <div className="flex items-center gap-4">
           <Select value={selectedStore} onValueChange={setSelectedStore}>

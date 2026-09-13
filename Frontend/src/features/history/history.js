@@ -2,7 +2,7 @@
 //  HISTORY.JS — Lịch Sử Kiểm Tra (history.html)
 // ============================================================
 
-import { API, loadStores } from './shared.js';
+import { API, loadStores } from '../../utils/shared.js';
 
 const storeSelect = document.getElementById('storeSelect');
 const historyTable = document.getElementById('history-table');

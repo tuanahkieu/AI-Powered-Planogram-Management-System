@@ -2,7 +2,7 @@
 //  KTRA.JS — Trang Kiểm Tra (index.html)
 // ============================================================
 
-import { API, loadPlanogramFiles, customPlanogram } from './shared.js';
+import { API, loadPlanogramFiles, customPlanogram } from '../../utils/shared.js';
 
 const uploadArea             = document.getElementById('upload-area');
 const fileInput              = document.getElementById('file-input');

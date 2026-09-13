@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, X, Trash2, CheckCircle, Store, Tag, Layers, Calendar } from 'lucide-react';
-import { API } from './shared.js';
+import { API } from '../../utils/shared.js';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -159,8 +159,8 @@ export default function ContractsPage() {
     <div className="p-8 max-w-7xl mx-auto space-y-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Hợp Đồng Nhãn Hàng</h1>
-          <p className="text-muted-foreground mt-2">Quản lý thỏa thuận trưng bày với các nhà cung cấp</p>
+          <h1 className="text-3xl font-heading font-bold tracking-tight gradient-ai-text">Hợp Đồng Nhãn Hàng</h1>
+          <p className="text-muted-foreground mt-2">Quản lý các hợp đồng cam kết trưng bày với đối tác</p>
         </div>
         <div>
           <Button onClick={openWizard} className="gap-2">

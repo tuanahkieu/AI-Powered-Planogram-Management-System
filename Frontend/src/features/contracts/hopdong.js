@@ -2,7 +2,7 @@
 //  HOPDONG.JS — Quản lý hợp đồng nhãn hàng
 // ============================================================
 
-import { API } from './shared.js';
+import { API } from '../../utils/shared.js';
 
 const BRAND_COLORS = [
     'linear-gradient(135deg,#6366f1,#4f46e5)',

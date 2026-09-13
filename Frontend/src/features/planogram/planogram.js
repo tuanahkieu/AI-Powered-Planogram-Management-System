@@ -2,7 +2,7 @@
 //  PLANOGRAM.JS — Trang Tạo Planogram (planogram.html)
 //  Requires: js/shared.js loaded first
 // ============================================================
-import { API, customPlanogram, allFetchedPlanograms, loadStores, loadPlanogramFiles, renderPlanogramDropdown, saveProductsToMongo, loadProductsFromMongo } from './shared.js';
+import { API, customPlanogram, allFetchedPlanograms, loadStores, loadPlanogramFiles, renderPlanogramDropdown, saveProductsToMongo, loadProductsFromMongo } from '../../utils/shared.js';
 
 (function () {
     // ---- State ----
@@ -717,7 +717,7 @@ import { API, customPlanogram, allFetchedPlanograms, loadStores, loadPlanogramFi
                 </div>
                 <hr class="pog-divider">
                 <div class="pog-section-title">Xóa Hàng Sản Phẩm</div>
-                <select class="pog-input" id="cfgClearTierSel" style="margin-bottom:0.4rem;">${clearTierOptions}</select>
+                <select class="pog-select" id="cfgClearTierSel" style="margin-bottom:0.4rem; width:100%;">${clearTierOptions}</select>
                 <button class="pog-apply-btn" id="cfgClearTier" style="background:rgba(245,158,11,0.12);border-color:rgba(245,158,11,0.35);color:#fbbf24;width:100%;margin-bottom:0.5rem;">
                     Xóa Toàn Bộ Tầng Đã Chọn
                 </button>

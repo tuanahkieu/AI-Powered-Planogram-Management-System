@@ -685,14 +685,18 @@ ul { list-style: none; }
 .pog-topbar-right  { display: flex; align-items: center; gap: 0.75rem; }
 
 .pog-select {
-    background: #ffffff;
+    background: #ffffff url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%236b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>') no-repeat right 0.75rem center;
+    background-size: 14px;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
     border: 1px solid #e5e7eb;
     border-radius: var(--radius-xs);
     color: #111827;
     font-family: inherit;
     font-size: 0.88rem;
     font-weight: 500;
-    padding: 0.35rem 0.75rem;
+    padding: 0.35rem 2rem 0.35rem 0.75rem;
     cursor: pointer;
     outline: none;
     min-width: 130px;
@@ -1190,3 +1194,55 @@ input[type="number"].pog-input { -moz-appearance: textfield; max-width: 90px; }
     0%, 100% { outline-color: rgba(239,68,68,0.9); }
     50%       { outline-color: rgba(239,68,68,0.3); }
 }
+
+/* DARK MODE OVERRIDES FOR PLANOGRAM BUILDER */
+.dark .pog-catalog-panel,
+.dark .pog-props-panel {
+    background: rgba(15, 23, 42, 0.45);
+    border-color: #1E293B;
+}
+.dark .pog-cat-item,
+.dark .pog-fixture,
+.dark .pog-tier-drop,
+.dark .pog-btn-ghost,
+.dark .modal-card {
+    background: #0F172A;
+    border-color: #1E293B;
+    color: #ffffff;
+}
+.dark .pog-select {
+    background: #0F172A url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%239ca3af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>') no-repeat right 0.75rem center;
+    background-size: 14px;
+    border-color: #1E293B;
+    color: #ffffff;
+}
+.dark .pog-topbar {
+    background: rgba(15, 23, 42, 0.85);
+    border-color: #1E293B;
+}
+.dark .pog-tier-label {
+    background: #1E293B;
+    border-color: #334155;
+    color: #ffffff;
+}
+.dark .pog-cat-item:hover {
+    background: #1E293B;
+    border-color: #334155;
+}
+.dark .pog-panel-title {
+    background: rgba(15, 23, 42, 0.8);
+    color: #ffffff;
+    border-color: #1E293B;
+}
+.dark .pog-input {
+    background: #0B1120;
+    border-color: #1E293B;
+    color: #ffffff;
+}
+.dark .pog-select option {
+    background: #0F172A;
+    color: #ffffff;
+}
+.dark .pog-cat-name { color: #ffffff; }
+.dark .pog-empty-state { color: #8496ae; }
+.dark .pog-cat-del-btn { color: #8496ae; }
